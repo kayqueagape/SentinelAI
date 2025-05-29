@@ -1,5 +1,5 @@
-import config from '../../config.js';
-import { getStore } from './store.js';
+import config from "../../config.js";
+import { getStore } from "./store.js";
 
 const WINDOW_MS = config.rateLimit.windowMs;
 const MAX_REQUESTS = config.rateLimit.maxRequests;
@@ -25,14 +25,13 @@ async function checkRateLimit(identifier) {
   const count = await store.incr(countKey);
 
   if (count === 1) {
-    // First request in window — set expiry
     await store.expire(countKey, Math.ceil(WINDOW_MS / 1000));
   }
 
   const remaining = Math.max(0, MAX_REQUESTS - count);
 
   if (count > MAX_REQUESTS) {
-    await store.set(blockKey, '1', BLOCK_DURATION_MS);
+    await store.set(blockKey, "1", BLOCK_DURATION_MS);
     await store.del(countKey);
     return {
       allowed: false,
@@ -54,24 +53,24 @@ async function checkRateLimit(identifier) {
 }
 
 async function rateLimiterMiddleware(req, res, next) {
-  const identifier = req.ip || req.connection.remoteAddress || 'unknown';
+  const identifier = req.ip || req.connection.remoteAddress || "unknown";
   try {
     const result = await checkRateLimit(identifier);
-    res.set('X-RateLimit-Limit', MAX_REQUESTS);
-    res.set('X-RateLimit-Remaining', result.remaining ?? 0);
-    res.set('X-RateLimit-Reset', new Date(result.resetMs).toISOString());
+    res.set("X-RateLimit-Limit", MAX_REQUESTS);
+    res.set("X-RateLimit-Remaining", result.remaining ?? 0);
+    res.set("X-RateLimit-Reset", new Date(result.resetMs).toISOString());
 
     if (!result.allowed) {
-      res.set('Retry-After', Math.ceil(result.retryAfterMs / 1000));
+      res.set("Retry-After", Math.ceil(result.retryAfterMs / 1000));
       return res.status(429).json({
-        error: 'Too Many Requests',
+        error: "Too Many Requests",
         message: `Rate limit exceeded. Try again in ${Math.ceil(result.retryAfterMs / 1000)}s.`,
         retryAfterMs: result.retryAfterMs,
       });
     }
     next();
   } catch (err) {
-    console.error('Rate limiter error:', err);
+    console.error("Rate limiter error:", err);
     next();
   }
 }
